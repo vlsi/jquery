@@ -15,7 +15,13 @@ define( [
 
 // Support: Android <=4.0 only
 // Make sure we trim BOM and NBSP
-var rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g;
+// Require that the "whitespace run" starts from a non-whitespace
+// to avoid O(N^2) behavior when the engine would try matching "\s$" at each space position.
+// It is important that non-whitespace char is mandatory for regexp performance reasons,
+// however, it does not break correctness since whitespace-only string will be trimmed by ltrim above.
+var ltrim = /^[\s\uFEFF\xA0]+/,
+	rtrim = /([^\s\uFEFF\xA0])[\s\uFEFF\xA0]+$/,
+	useDefaultTrim = false;
 
 // Bind a function to a context, optionally partially applying any
 // arguments.
@@ -79,9 +85,21 @@ jQuery.isNumeric = function( obj ) {
 		!isNaN( obj - parseFloat( obj ) );
 };
 
-jQuery.trim = function( text ) {
-	return text == null ?
-		"" :
-		( text + "" ).replace( rtrim, "" );
-};
+if ( String.prototype.trim ) {
+	useDefaultTrim = "_" === " \uFEFF\xA0_\uFEFF\xA0 ".trim();
+}
+
+if ( useDefaultTrim ) {
+	jQuery.trim = function( text ) {
+		return text == null ?
+			"" :
+			( text + "" ).trim();
+	};
+} else {
+	jQuery.trim = function( text ) {
+		return text == null ?
+			"" :
+			( text + "" ).replace( ltrim, "" ).replace( rtrim, "$1" );
+	};
+}
 } );
